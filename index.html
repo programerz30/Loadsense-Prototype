@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LoadSense — Simulation Prototype</title>
+<title>LoadSense-Simulation Prototype</title>
 <style>
 :root{--bg:#ffffff;--fg:#182420;--muted:#5c6b65;--card:#f4f7f6;--line:#dbe4e1;--pri:#0b4f4a;--onpri:#ffffff;--acc:#f2a93b;--wave:#0b4f4a;--volt:#b9c7c2;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -42,19 +42,19 @@ td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
 <body>
 <main>
 <h1>LoadSense — simulation prototype</h1>
-<p class="tag">A clip-on current sensor reads a machine's electrical signature; an on-device, rule-based classifier says what the machine is doing and why. Pick a machine state and watch it work.</p>
+<p class="tag">A clip on current sensor reads a machine's electrical signature; an on device, rule based classifier says what the machine is doing and why. Pick a machine state and watch it work.</p>
 
 <div class="card">
   <h2>1 · Live signature and classification</h2>
   <div class="row" id="states"></div>
   <label>Sensor noise: <b id="nv">1.0</b>×<input type="range" id="noise" min="0.5" max="4" step="0.5" value="1"></label>
   <canvas id="cv"></canvas>
-  <div class="small">Current over 0.1 s (fixed ±17 A scale so a near-off machine looks tiny). Faint line: mains voltage.</div>
+  <div class="small">Current over 0.1 s (fixed ±17 A scale so a near off machine looks tiny). Faint line: mains voltage.</div>
   <div class="tiles">
     <div class="tile"><b id="f_irms">–</b><span>RMS current (A)</span></div>
     <div class="tile"><b id="f_pf">–</b><span>Power factor</span></div>
     <div class="tile"><b id="f_thd">–</b><span>Harmonic distortion</span></div>
-    <div class="tile"><b id="f_cv">–</b><span>Cycle-to-cycle swing</span></div>
+    <div class="tile"><b id="f_cv">–</b><span>Cycle to cycle swing</span></div>
   </div>
   <div class="verdict"><strong id="v_name">–</strong><div id="v_why"></div><div class="small" id="v_stab"></div></div>
 </div>
@@ -63,7 +63,7 @@ td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
   <h2>2 · Blind test (does it actually tell states apart?)</h2>
   <div class="row"><button class="go" id="run">Run 200 blind trials at current noise</button></div>
   <table id="res"></table>
-  <p class="small">Trials use randomised amplitude, phase, ripple frequency and noise. Signals are synthetic, so 100% here proves the logic is coherent, not that it will score 100% on a real shop floor.</p>
+  <p class="small">Trials use randomised amplitude, phase, ripple frequency and noise. Signals are synthetic so 100% here proves the logic is coherent and not that it will score 100% on a real shop floor.</p>
 </div>
 
 <div class="card">
@@ -83,11 +83,11 @@ td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
       <div class="small">Payback on a ₹2,500 node</div><div class="big" id="o_pay"></div>
     </div>
   </div>
-  <p class="small">Assumes 300 working days a year. Payback = device cost ÷ annual saving, the same formula as the deck. Idle draw % and capture rate are assumptions you can stress-test with the sliders.</p>
+  <p class="small">Assumes 300 working days a year. Payback = device cost ÷ annual saving, the same formula as the deck. Idle draw % and capture rate are assumptions you can stress test with the sliders.</p>
 </div>
 
 <div class="card small">
-  <b>What this is, honestly:</b> a software simulation, as the challenge allows. Waveforms are generated from typical induction-motor behaviour (single-phase, 50 Hz), and the thresholds are hand-set rules chosen so a plant electrician can follow them. Real deployment needs per-phase sensing and calibration on real machines, which is what the pilot stage is for.
+  <b>What this is, honestly:</b> a software simulation as the challenge allows. Waveforms are generated from typical induction motor behaviour (single-phase, 50 Hz), and the thresholds are hand set rules chosen so a plant electrician can follow them. Real deployment needs per phase sensing and calibration on real machines which is what the pilot stage is for.
 </div>
 </main>
 
