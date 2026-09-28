@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LoadSense — Simulation Prototype</title>
+<style>
+:root{--bg:#ffffff;--fg:#182420;--muted:#5c6b65;--card:#f4f7f6;--line:#dbe4e1;--pri:#0b4f4a;--onpri:#ffffff;--acc:#f2a93b;--wave:#0b4f4a;--volt:#b9c7c2;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1b19;--fg:#e6efec;--muted:#9db0aa;--card:#16292a;--line:#264240;--pri:#5cc4b5;--onpri:#0e1b19;--wave:#5cc4b5;--volt:#37504d}}
+:root[data-theme="dark"]{--bg:#0e1b19;--fg:#e6efec;--muted:#9db0aa;--card:#16292a;--line:#264240;--pri:#5cc4b5;--onpri:#0e1b19;--wave:#5cc4b5;--volt:#37504d}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Calibri,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.45}
+main{max-width:960px;margin:0 auto;padding:20px 16px 40px}
+h1,h2{font-family:Cambria,Georgia,serif;margin:0}
+h1{font-size:28px}
+h2{font-size:18px;margin-bottom:10px}
+.tag{color:var(--muted);margin:4px 0 18px}
+.card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:16px}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:8px 12px;border-radius:8px;cursor:pointer}
+button.on{background:var(--pri);color:var(--onpri);border-color:var(--pri)}
+button.go{background:var(--acc);color:#182420;border-color:var(--acc);font-weight:600}
+canvas{width:100%;height:220px;display:block;background:var(--bg);border-radius:8px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.tile{background:var(--bg);border-radius:8px;padding:10px;text-align:center}
+.tile b{display:block;font-family:Cambria,Georgia,serif;font-size:22px;color:var(--pri)}
+.tile span{font-size:12px;color:var(--muted)}
+.verdict{border-left:6px solid var(--acc);padding:6px 12px;margin-top:12px;background:var(--bg);border-radius:0 8px 8px 0}
+.verdict strong{font-family:Cambria,Georgia,serif;font-size:19px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+label{display:block;font-size:14px;margin-top:10px}
+input[type=range]{width:100%;accent-color:var(--pri)}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+.big{font-family:Cambria,Georgia,serif;font-size:26px;color:var(--pri)}
+.small{font-size:13px;color:var(--muted)}
+@media (max-width:640px){.tiles{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<main>
+<h1>LoadSense — simulation prototype</h1>
+<p class="tag">A clip-on current sensor reads a machine's electrical signature; an on-device, rule-based classifier says what the machine is doing and why. Pick a machine state and watch it work.</p>
+
+<div class="card">
+  <h2>1 · Live signature and classification</h2>
+  <div class="row" id="states"></div>
+  <label>Sensor noise: <b id="nv">1.0</b>×<input type="range" id="noise" min="0.5" max="4" step="0.5" value="1"></label>
+  <canvas id="cv"></canvas>
+  <div class="small">Current over 0.1 s (fixed ±17 A scale so a near-off machine looks tiny). Faint line: mains voltage.</div>
+  <div class="tiles">
+    <div class="tile"><b id="f_irms">–</b><span>RMS current (A)</span></div>
+    <div class="tile"><b id="f_pf">–</b><span>Power factor</span></div>
+    <div class="tile"><b id="f_thd">–</b><span>Harmonic distortion</span></div>
+    <div class="tile"><b id="f_cv">–</b><span>Cycle-to-cycle swing</span></div>
+  </div>
+  <div class="verdict"><strong id="v_name">–</strong><div id="v_why"></div><div class="small" id="v_stab"></div></div>
+</div>
+
+<div class="card">
+  <h2>2 · Blind test (does it actually tell states apart?)</h2>
+  <div class="row"><button class="go" id="run">Run 200 blind trials at current noise</button></div>
+  <table id="res"></table>
+  <p class="small">Trials use randomised amplitude, phase, ripple frequency and noise. Signals are synthetic, so 100% here proves the logic is coherent, not that it will score 100% on a real shop floor.</p>
+</div>
+
+<div class="card">
+  <h2>3 · What one monitored machine could save (illustrative)</h2>
+  <div class="grid2">
+    <div>
+      <label>Motor rating: <b id="a1v"></b> kW<input type="range" id="a1" min="1" max="30" step="0.5" value="7.5"></label>
+      <label>Idle hours per day: <b id="a2v"></b><input type="range" id="a2" min="0.5" max="8" step="0.5" value="3"></label>
+      <label>Idle draw as % of rated: <b id="a3v"></b>%<input type="range" id="a3" min="15" max="50" step="1" value="30"></label>
+      <label>Idle waste actually cut after alerts: <b id="a4v"></b>%<input type="range" id="a4" min="20" max="80" step="5" value="40"></label>
+      <label>Tariff: ₹<b id="a5v"></b>/kWh<input type="range" id="a5" min="5" max="12" step="0.5" value="8"></label>
+    </div>
+    <div>
+      <div class="small">Energy saved per year</div><div class="big" id="o_kwh"></div>
+      <div class="small">Money saved per year</div><div class="big" id="o_inr"></div>
+      <div class="small">CO₂e avoided per year (0.727 kg/kWh, CEA)</div><div class="big" id="o_co2"></div>
+      <div class="small">Payback on a ₹2,500 node</div><div class="big" id="o_pay"></div>
+    </div>
+  </div>
+  <p class="small">Assumes 300 working days a year. Payback = device cost ÷ annual saving, the same formula as the deck. Idle draw % and capture rate are assumptions you can stress-test with the sliders.</p>
+</div>
+
+<div class="card small">
+  <b>What this is, honestly:</b> a software simulation, as the challenge allows. Waveforms are generated from typical induction-motor behaviour (single-phase, 50 Hz), and the thresholds are hand-set rules chosen so a plant electrician can follow them. Real deployment needs per-phase sensing and calibration on real machines, which is what the pilot stage is for.
+</div>
+</main>
+
+<script>
+const FS=2000,N=1000,F=50,V=325.27,cs=FS/F;
+const S={
+ loaded:{n:"Running under load",I:10,phi:31,h:[[3,.03],[5,.02]],mod:0},
+ idle:{n:"Idle (on, doing no useful work)",I:4.5,phi:72,h:[[3,.05],[5,.04]],mod:0},
+ phantom:{n:"Standby / phantom draw",I:.6,phi:53,h:[[3,.32],[5,.15],[7,.08]],mod:0},
+ fault:{n:"Early bearing / mechanical fault",I:11,phi:34,h:[[3,.03],[5,.02]],mod:1}
+};
+const $=id=>document.getElementById(id);
+function gauss(){return Math.sqrt(-2*Math.log(1-Math.random()))*Math.cos(6.2832*Math.random())}
+function synth(k,noise){
+ const s=S[k],i=new Float32Array(N),v=new Float32Array(N);
+ const A=s.I*Math.SQRT2*(1+(Math.random()-.5)*.03),ph=(s.phi+(Math.random()-.5)*6)*Math.PI/180;
+ const mf=6+Math.random()*4,md=s.mod?.10+Math.random()*.04:0,mp=Math.random()*6.28;
+ for(let n=0;n<N;n++){const t=n/FS,w=2*Math.PI*F*t;v[n]=V*Math.sin(w);
+  let x=Math.sin(w-ph);for(const [h,a] of s.h)x+=a*Math.sin(h*(w-ph)+h*.3);
+  i[n]=A*(1+md*Math.sin(2*Math.PI*mf*t+mp))*x+gauss()*.04*noise;}
+ return {i,v};
+}
+function features({i,v}){
+ let q=0,p=0;for(let n=0;n<N;n++){q+=i[n]*i[n];p+=i[n]*v[n]}
+ const irms=Math.sqrt(q/N),pf=(p/N)/((V/Math.SQRT2)*irms);
+ const amp=k=>{let re=0,im=0;for(let n=0;n<N;n++){const a=6.2832*k*F*n/FS;re+=i[n]*Math.cos(a);im+=i[n]*Math.sin(a)}return 2*Math.hypot(re,im)/N};
+ let hs=0;for(let k=2;k<=7;k++)hs+=amp(k)**2;const thd=Math.sqrt(hs)/amp(1);
+ const r=[];for(let c=0;c<N/cs;c++){let z=0;for(let j=0;j<cs;j++)z+=i[c*cs+j]**2;r.push(Math.sqrt(z/cs))}
+ const m=r.reduce((a,b)=>a+b)/r.length,sd=Math.sqrt(r.reduce((a,b)=>a+(b-m)**2,0)/r.length);
+ return {irms,pf,thd,cv:sd/m};
+}
+function classify(f){
+ if(f.irms<1.5)return{k:"phantom",why:`Only ${f.irms.toFixed(2)} A flowing, with ${(f.thd*100).toFixed(0)}% harmonic distortion: electronics drawing power while the machine is effectively off.`};
+ if(f.cv>.04)return{k:"fault",why:`Current swings ${(f.cv*100).toFixed(1)}% from cycle to cycle (healthy machines stay under 4%): a periodic mechanical signature such as bearing wear.`};
+ if(f.pf<.5)return{k:"idle",why:`Power factor is ${f.pf.toFixed(2)}: the motor is energised but doing little useful work (loaded machines sit near 0.8 or higher).`};
+ return{k:"loaded",why:`Power factor ${f.pf.toFixed(2)} and a steady ${f.irms.toFixed(1)} A: normal working load.`};
+}
+let cur="loaded",hist=[];
+const box=$("states");
+for(const k in S){const b=document.createElement("button");b.textContent=S[k].n;b.dataset.k=k;b.onclick=()=>{cur=k;hist=[];mark();tick()};box.appendChild(b)}
+function mark(){[...box.children].forEach(b=>b.classList.toggle("on",b.dataset.k===cur))}
+function draw(sig){
+ const c=$("cv"),d=devicePixelRatio||1,W=c.clientWidth,H=c.clientHeight;c.width=W*d;c.height=H*d;
+ const g=c.getContext("2d");g.scale(d,d);const st=getComputedStyle(document.documentElement);
+ const y=a=>H/2-a/17*(H/2-10);
+ g.strokeStyle=st.getPropertyValue("--line");g.lineWidth=1;
+ for(const a of[-15,-10,-5,0,5,10,15]){g.beginPath();g.moveTo(0,y(a));g.lineTo(W,y(a));g.stroke()}
+ g.fillStyle=st.getPropertyValue("--muted");g.font="11px sans-serif";g.fillText("+15 A",4,y(15)-3);g.fillText("0",4,y(0)-3);g.fillText("−15 A",4,y(-15)-3);
+ const M=200,line=(arr,sc,col,w)=>{g.strokeStyle=col;g.lineWidth=w;g.beginPath();for(let n=0;n<M;n++){const X=n/(M-1)*W,Y=y(arr[n]*sc);n?g.lineTo(X,Y):g.moveTo(X,Y)}g.stroke()};
+ line(sig.v,12/V,st.getPropertyValue("--volt"),1.5);line(sig.i,1,st.getPropertyValue("--wave"),2.2);
+}
+function tick(){
+ const noise=+$("noise").value,sig=synth(cur,noise),f=features(sig),r=classify(f);
+ draw(sig);
+ $("f_irms").textContent=f.irms.toFixed(2);$("f_pf").textContent=f.pf.toFixed(2);
+ $("f_thd").textContent=(f.thd*100).toFixed(0)+"%";$("f_cv").textContent=(f.cv*100).toFixed(1)+"%";
+ $("v_name").textContent="Detected: "+S[r.k].n;$("v_why").textContent="Why: "+r.why;
+ hist.push(r.k);if(hist.length>20)hist.shift();
+ $("v_stab").textContent=`Same call in ${hist.filter(x=>x===r.k).length} of the last ${hist.length} readings`;
+}
+$("noise").oninput=e=>{$("nv").textContent=(+e.target.value).toFixed(1)};
+$("run").onclick=()=>{
+ const noise=+$("noise").value;let tot=0,html="<tr><th>True state</th><th>Correct (of 50)</th><th>Accuracy</th></tr>";
+ for(const k in S){let ok=0;for(let t=0;t<50;t++)if(classify(features(synth(k,noise))).k===k)ok++;tot+=ok;
+  html+=`<tr><td>${S[k].n}</td><td>${ok}</td><td>${(ok*2)}%</td></tr>`}
+ html+=`<tr><td><b>Overall</b></td><td><b>${tot}/200</b></td><td><b>${(tot/2).toFixed(1)}%</b></td></tr>`;
+ $("res").innerHTML=html;
+};
+function calc(){
+ const kw=+$("a1").value,h=+$("a2").value,idle=+$("a3").value/100,cap=+$("a4").value/100,t=+$("a5").value;
+ $("a1v").textContent=kw;$("a2v").textContent=h;$("a3v").textContent=Math.round(idle*100);$("a4v").textContent=Math.round(cap*100);$("a5v").textContent=t;
+ const kwh=kw*idle*h*300*cap,inr=kwh*t;
+ $("o_kwh").textContent=Math.round(kwh).toLocaleString("en-IN")+" kWh";
+ $("o_inr").textContent="₹"+Math.round(inr).toLocaleString("en-IN");
+ $("o_co2").textContent=Math.round(kwh*.727).toLocaleString("en-IN")+" kg";
+ $("o_pay").textContent=inr>0?(2500/inr*12).toFixed(1)+" months":"–";
+}
+["a1","a2","a3","a4","a5"].forEach(id=>$(id).oninput=calc);
+calc();mark();tick();setInterval(tick,700);
+addEventListener("resize",tick);
+</script>
+</body>
+</html>
